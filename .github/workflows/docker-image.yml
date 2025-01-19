@@ -1,0 +1,48 @@
+name: Build and Push Docker Images to Separate Repos
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set build timestamp
+      id: vars
+      run: echo "timestamp=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: heyanoop
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Push Docker Images
+      run: |
+        # List of services and their respective Docker Hub repos
+        declare -A service_repos=(
+          [worker]="anoopdocker/worker"
+          [vote]="anoopdocker/vote"
+          [result]="anoopdocker/result"
+          [healthchecks]="anoopdocker/healthchecks"
+          [seed-data]="anoopdocker/seed-data"
+        )
+        
+        # Iterate over services
+        for service in "${!service_repos[@]}"; do
+          repo=${service_repos[$service]}
+          echo "Building and pushing image for $service to $repo..."
+          
+          # Build the Docker image
+          docker build "./$service" --file "./$service/Dockerfile" --tag "$repo:${{ env.timestamp }}"
+          
+          # Push the Docker image
+          docker push "$repo:${{ env.timestamp }}"
+        done
