@@ -1,0 +1,74 @@
+name: CI/CD with ArgoCD
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set Build Timestamp
+      id: vars
+      run: echo "timestamp=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Push Docker Images
+      run: |
+        declare -A service_repos=(
+          [worker]="heyanoop/worker"
+          [vote]="heyanoop/vote"
+          [result]="heyanoop/result"
+          [redis]="heyanoop/redis"
+          [db]="heyanoop/db"
+        )
+
+        for service in "${!service_repos[@]}"; do
+          repo=${service_repos[$service]}
+          echo "Building and pushing image for $service to $repo..."
+          docker build "./$service" --file "./$service/Dockerfile" --tag "$repo:${{ env.timestamp }}"
+          docker push "$repo:${{ env.timestamp }}"
+        done
+
+  cd:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Update Kubernetes Manifests
+      run: |
+        declare -A service_repos=(
+          [worker]="anoopdocker/worker"
+          [vote]="anoopdocker/vote"
+          [result]="anoopdocker/result"
+          [redis]="anoopdocker/redis"
+          [db]="anoopdocker/db"
+        )
+
+        for service in "${!service_repos[@]}"; do
+          repo=${service_repos[$service]}
+          echo "Updating manifest for $service with image $repo:${{ env.timestamp }}"
+          sed -i "s|image: $repo:.*|image: $repo:${{ env.timestamp }}|g" "k8s-specifications/${service}-deployment.yaml"
+        done
+
+    - name: Commit and Push Updated Manifests
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git add k8s-specifications/*.yaml
+        git commit -m "Update manifests with new image tags"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
