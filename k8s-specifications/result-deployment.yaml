@@ -15,7 +15,7 @@ spec:
         app: result
     spec:
       containers:
-        - image: heyanoop/result:1737350213
+        - image: heyanoop/result:
           name: result
           ports:
             - containerPort: 80
