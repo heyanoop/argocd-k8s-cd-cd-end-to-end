@@ -12,13 +12,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Set Build Timestamp
-      id: vars
-      run: echo "timestamp=$(date +%s)" >> $GITHUB_ENV
-
-    - name: Debug Timestamp
-      run: echo "timestamp=${{ env.timestamp }}"
-
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -36,12 +29,12 @@ jobs:
         for service in "${!service_repos[@]}"; do
           repo=${service_repos[$service]}
           echo "Building and pushing image for $service to $repo..."
-          docker build "./$service" --file "./$service/Dockerfile" --tag "$repo:${{ env.timestamp }}"
-          docker push "$repo:${{ env.timestamp }}"
+          docker build "./$service" --file "./$service/Dockerfile" --tag "$repo:${{ github.run_number }}"
+          docker push "$repo:${{ github.run_number }}"
         done
 
-    - name: Output Build Timestamp
-      run: echo "::set-output name=timestamp::${{ env.timestamp }}"
+    - name: Output Build Run Number
+      run: echo "::set-output name=run_number::${{ github.run_number }}"
       id: build_output
 
   cd:
@@ -62,8 +55,8 @@ jobs:
 
         for service in "${!service_repos[@]}"; do
           repo=${service_repos[$service]}
-          echo "Updating manifest for $service with image $repo:${{ needs.ci.outputs.timestamp }}"
-          sed -i "s|image: $repo:.*|image: $repo:${{ needs.ci.outputs.timestamp }}|g" "k8s-specifications/${service}-deployment.yaml"
+          echo "Updating manifest for $service with image $repo:${{ github.run_number }}"
+          sed -i "s|image: $repo:.*|image: $repo:${{ github.run_number }}|g" "k8s-specifications/${service}-deployment.yaml"
         done
 
     - name: Debug Updated Manifests
