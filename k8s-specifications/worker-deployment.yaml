@@ -15,5 +15,5 @@ spec:
         app: worker
     spec:
       containers:
-      - image: heyanoop/worker:1737353598
+      - image: heyanoop/worker:14
         name: worker
