@@ -28,8 +28,6 @@ jobs:
           [worker]="heyanoop/worker"
           [vote]="heyanoop/vote"
           [result]="heyanoop/result"
-          [redis]="heyanoop/redis"
-          [db]="heyanoop/db"
         )
 
         for service in "${!service_repos[@]}"; do
@@ -50,11 +48,9 @@ jobs:
     - name: Update Kubernetes Manifests
       run: |
         declare -A service_repos=(
-          [worker]="anoopdocker/worker"
-          [vote]="anoopdocker/vote"
-          [result]="anoopdocker/result"
-          [redis]="anoopdocker/redis"
-          [db]="anoopdocker/db"
+          [worker]="heyanoop/worker"
+          [vote]="heyanoop/vote"
+          [result]="heyanoop/result"
         )
 
         for service in "${!service_repos[@]}"; do
