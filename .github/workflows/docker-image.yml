@@ -16,6 +16,9 @@ jobs:
       id: vars
       run: echo "timestamp=$(date +%s)" >> $GITHUB_ENV
 
+    - name: Debug Timestamp
+      run: echo "timestamp=${{ env.timestamp }}"
+
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -37,6 +40,10 @@ jobs:
           docker push "$repo:${{ env.timestamp }}"
         done
 
+    - name: Output Build Timestamp
+      run: echo "::set-output name=timestamp::${{ env.timestamp }}"
+      id: build_output
+
   cd:
     needs: ci
     runs-on: ubuntu-latest
@@ -55,9 +62,12 @@ jobs:
 
         for service in "${!service_repos[@]}"; do
           repo=${service_repos[$service]}
-          echo "Updating manifest for $service with image $repo:${{ env.timestamp }}"
-          sed -i "s|image: $repo:.*|image: $repo:${{ env.timestamp }}|g" "k8s-specifications/${service}-deployment.yaml"
+          echo "Updating manifest for $service with image $repo:${{ needs.ci.outputs.timestamp }}"
+          sed -i "s|image: $repo:.*|image: $repo:${{ needs.ci.outputs.timestamp }}|g" "k8s-specifications/${service}-deployment.yaml"
         done
+
+    - name: Debug Updated Manifests
+      run: cat k8s-specifications/*.yaml
 
     - name: Commit and Push Updated Manifests
       run: |
